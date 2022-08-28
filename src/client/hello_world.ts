@@ -88,10 +88,10 @@ const GREETING_SIZE = borsh.serialize(
  */
 export async function establishConnection(): Promise<void> {
   // Step 1: Connect to the Solana Devnet
-  /* Get the connection object and retrieve the 
-   version from the connection object. */
-
-  //Insert the Step 1 code from the tutorial here
+  /* Get the connection object and retrieve the version from the connection object. */
+  connection = new Connection(clusterApiUrl("devnet"),"confirmed");
+  const version = await connection.getVersion();
+  console.log('Connection to cluster established:', version);
 }
 
 /**
@@ -100,13 +100,17 @@ export async function establishConnection(): Promise<void> {
 export async function establishPayer(): Promise<void> {
   
   //Step 2: Generate a keypair - this would be an account that pays for the calls to the program
-  
-  //Insert the Step 2 code from the tutorial here
-  
-  //Step 3: Requesting an airdrop
+  payer = Keypair.generate();
+  console.log("Public Key of Payer is:", payer.publicKey);
 
-   //Insert the Step 3 code from the tutorial here
-   
+  //Step 3: Requesting an airdrop
+  const sig = await connection.requestAirdrop(
+    payer.publicKey,
+    2 * LAMPORTS_PER_SOL,
+  );
+
+  await connection.confirmTransaction(sig);
+
   console.log(
     'Using account',
     payer.publicKey.toBase58(),
@@ -150,8 +154,8 @@ export async function checkProgram(): Promise<void> {
   const GREETING_SEED = 'hello';
   greetedPubkey = await PublicKey.createWithSeed(
     payer.publicKey,
-    GREETING_SEED,
-    programId,
+    GREETING_SEED,  //seed is hello, get same account everytime
+    programId,  //owner of account, can write data
   );
 
   // Check if the greeting account has already been created
@@ -201,13 +205,19 @@ export async function sayHello(): Promise<void> {
   console.log('Saying hello to', greetedPubkey.toBase58());
   
   // STEP 4: Create an instruction to be sent to the program
-  
-  //Insert the Step 4 code from the tutorial here
+  const instruction = new TransactionInstruction({
+    keys: [{pubkey: greetedPubkey, isSigner: false, isWritable: true}],
+    programId,
+    data: Buffer.alloc(0), // All instructions are hellos
+  });
 
   //STEP 5: Create a transaction to be sent to the blockchain containing the instruction
+  await sendAndConfirmTransaction(
+    connection,
+    new Transaction().add(instruction),
+    [payer],
+  );
   
-  //Insert the Step 5 code from the tutorial here
-
 }
 
 /**
